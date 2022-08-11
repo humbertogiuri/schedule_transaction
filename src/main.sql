@@ -27,15 +27,16 @@ RETURNS integer AS $$
 		op_1					CHARACTER(1);
 		attr_1					CHARACTER(1);
 		time_commit				INTEGER;
+		loops 					INTEGER;
 
     BEGIN
 		-- Criando tabela para servir de grafo
-        CREATE TEMP TABLE IF NOT EXISTS "serialization_graph" (
-            "T_inicio" INTEGER NOT NULL,
-            "T_fim" INTEGER NOT NULL
-        );
+        CREATE TEMP TABLE IF NOT EXISTS "node" (
+            "t_inicio" INTEGER NOT NULL,
+            "t_fim" INTEGER NOT NULL
+        ) ON COMMIT DELETE ROWS;
 		
-        -- Iterando sobre a tabela
+        -- Iterando sobre a tabela e formando o grafo
         FOR schedule_record_inicio IN SELECT * FROM "Schedule" LOOP
             -- Separando as informações da linha e variáveis    
             time_id_1 := schedule_record_inicio."time";
@@ -48,7 +49,7 @@ RETURNS integer AS $$
 			
 			ELSE
 				-- Descobrindo o time em que a transação ocorreu
-				SELECT s."time" INTO time_COMMIT FROM "Schedule" AS s WHERE s."op" = 'C' AND s."#t" = tr_1;
+				SELECT s."time" INTO time_commit FROM "Schedule" AS s WHERE s."op" = 'C' AND s."#t" = tr_1;
 
 				FOR schedule_record_fim IN SELECT * FROM "Schedule" AS s WHERE (
 							s."time" > time_id_1 AND
@@ -59,11 +60,11 @@ RETURNS integer AS $$
 						) LOOP
 					
 					IF op_1 = 'R' AND schedule_record_fim."op" = 'W' THEN
-						INSERT INTO "serialization_graph"
+						INSERT INTO "node"
 						VALUES(tr_1, schedule_record_fim."#t");
 						
 					ELSIF op_1 = 'W' THEN
-						INSERT INTO "serialization_graph"
+						INSERT INTO "node"
 						VALUES(tr_1, schedule_record_fim."#t");
 					ELSE
 						CONTINUE;
@@ -72,18 +73,39 @@ RETURNS integer AS $$
 			END IF;
         END LOOP;
 		
-		FOR schedule_record_fim IN SELECT * FROM "serialization_graph" LOOP
-			RAISE NOTICE '% %', schedule_record_fim."T_inicio", schedule_record_fim."T_fim";
-		END LOOP;
-		
-        DROP TABLE "serialization_graph";
-    	RETURN 1;
-
+		--Algoritmo para detecção de ciclos
+		EXECUTE 'WITH RECURSIVE search_graph(t_inicio, t_fim, depth, path, cycle) AS (
+			SELECT g.t_inicio, g.t_fim, 1,
+				ARRAY[g.t_inicio],
+				false
+			FROM "node" g
+			UNION ALL
+			SELECT g.t_inicio, g.t_fim, sg.depth + 1,
+				path || g.t_inicio,
+				g.t_inicio = ANY(path)
+			FROM "node" g, search_graph sg
+			WHERE g.t_inicio = sg.t_fim AND NOT cycle
+		)
+		SELECT count(*) FROM search_graph where cycle = TRUE' INTO loops;
+		  IF loops > 0 THEN
+			RETURN 0;
+		ELSE
+			RETURN 1;
+		END IF;
     END;
 $$ LANGUAGE plpgsql;
 
 
 -- Example_01 (PostgreSQL 10)
+DROP TABLE IF EXISTS "Schedule";
+CREATE TABLE "Schedule" (
+	"time" integer,
+	"#t" integer NOT NULL,
+	"op" character NOT NULL,
+	"attr" character NOT NULL,
+	UNIQUE ("time")
+);
+
 INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
 (1, 1,  'R',  'X'),
 (2, 2,  'R',  'X'),
@@ -95,3 +117,101 @@ INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
 -- calling function
 SELECT testeEquivalenciaPorConflito() AS resp;
 
+
+-- example_02 (PostgreSQL 10)
+DROP TABLE IF EXISTS "Schedule";
+CREATE TABLE "Schedule" (
+	"time" integer,
+	"#t" integer NOT NULL,
+	"op" character NOT NULL,
+	"attr" character NOT NULL,
+	UNIQUE ("time")
+);
+
+INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
+(7, 3,  'R',  'X'),
+(8, 3,  'R',  'Y'),
+(9, 4,  'R',  'X'),
+(10,  3,  'W',  'Y'),
+(11,  4,  'C',  '-'),
+(12,  3,  'C',  '-');
+
+-- calling function
+SELECT testeEquivalenciaPorConflito() AS resp;
+
+
+-- example_03 (PostgreSQL 10)
+DROP TABLE IF EXISTS "Schedule";
+CREATE TABLE "Schedule" (
+	"time" integer,
+	"#t" integer NOT NULL,
+	"op" character NOT NULL,
+	"attr" character NOT NULL,
+	UNIQUE ("time")
+);
+
+INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
+(1, 1,  'R',  'A'),
+(2, 1,  'W',  'A'),
+(3, 1,  'R',  'B'),
+(4, 1,  'W',  'B'),
+(5, 1,  'C',  '-'),
+(6, 2,  'R',  'A'),
+(7, 2,  'W',  'A'),
+(8, 2,  'R',  'B'),
+(9, 2,  'W',  'B'),
+(10, 2,  'C',  '-');
+
+-- calling function
+SELECT testeEquivalenciaPorConflito() AS resp;
+
+-- example_04 (PostgreSQL 10)
+DROP TABLE IF EXISTS "Schedule";
+CREATE TABLE "Schedule" (
+	"time" integer,
+	"#t" integer NOT NULL,
+	"op" character NOT NULL,
+	"attr" character NOT NULL,
+	UNIQUE ("time")
+);
+
+INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
+(1, 1,  'R',  'A'),
+(2, 2,  'R',  'A'),
+(3, 2,  'W',  'A'),
+(4, 1,  'W',  'A'),
+(5, 1,  'R',  'B'),
+(6, 1,  'W',  'B'),
+(7, 2,  'R',  'B'),
+(8, 2,  'W',  'B'),
+(9, 1,  'C',  '-'),
+(10, 2,  'C',  '-');
+
+-- calling function
+SELECT testeEquivalenciaPorConflito() AS resp;
+
+
+-- example_05 (PostgreSQL 10)
+DROP TABLE IF EXISTS "Schedule";
+CREATE TABLE "Schedule" (
+	"time" integer,
+	"#t" integer NOT NULL,
+	"op" character NOT NULL,
+	"attr" character NOT NULL,
+	UNIQUE ("time")
+);
+
+INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
+(1, 1,  'R',  'A'),
+(2, 2,  'W',  'A'),
+(3, 1,  'W',  'A'),
+(4, 3,  'R',  'B'),
+(5, 1,  'W',  'B'),
+(6, 2,  'W',  'B'),
+(7, 3,  'W',  'B'),
+(8, 1,  'C',  '-'),
+(9, 2,  'C',  '-'),
+(10, 3,  'C',  '-');
+
+-- calling function
+SELECT testeEquivalenciaPorConflito() AS resp;
