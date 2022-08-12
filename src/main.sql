@@ -97,14 +97,8 @@ $$ LANGUAGE plpgsql;
 
 
 -- Example_01 (PostgreSQL 10)
-DROP TABLE IF EXISTS "Schedule";
-CREATE TABLE "Schedule" (
-	"time" integer,
-	"#t" integer NOT NULL,
-	"op" character NOT NULL,
-	"attr" character NOT NULL,
-	UNIQUE ("time")
-);
+-- Resultado: 0
+TRUNCATE TABLE "Schedule";
 
 INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
 (1, 1,  'R',  'X'),
@@ -119,14 +113,8 @@ SELECT testeEquivalenciaPorConflito() AS resp;
 
 
 -- example_02 (PostgreSQL 10)
-DROP TABLE IF EXISTS "Schedule";
-CREATE TABLE "Schedule" (
-	"time" integer,
-	"#t" integer NOT NULL,
-	"op" character NOT NULL,
-	"attr" character NOT NULL,
-	UNIQUE ("time")
-);
+-- Resultado: 1
+TRUNCATE TABLE "Schedule";
 
 INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
 (7, 3,  'R',  'X'),
@@ -141,14 +129,8 @@ SELECT testeEquivalenciaPorConflito() AS resp;
 
 
 -- example_03 (PostgreSQL 10)
-DROP TABLE IF EXISTS "Schedule";
-CREATE TABLE "Schedule" (
-	"time" integer,
-	"#t" integer NOT NULL,
-	"op" character NOT NULL,
-	"attr" character NOT NULL,
-	UNIQUE ("time")
-);
+-- Resultado: 1
+TRUNCATE TABLE "Schedule";
 
 INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
 (1, 1,  'R',  'A'),
@@ -166,14 +148,8 @@ INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
 SELECT testeEquivalenciaPorConflito() AS resp;
 
 -- example_04 (PostgreSQL 10)
-DROP TABLE IF EXISTS "Schedule";
-CREATE TABLE "Schedule" (
-	"time" integer,
-	"#t" integer NOT NULL,
-	"op" character NOT NULL,
-	"attr" character NOT NULL,
-	UNIQUE ("time")
-);
+-- Resultado: 0
+TRUNCATE TABLE "Schedule";
 
 INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
 (1, 1,  'R',  'A'),
@@ -192,14 +168,8 @@ SELECT testeEquivalenciaPorConflito() AS resp;
 
 
 -- example_05 (PostgreSQL 10)
-DROP TABLE IF EXISTS "Schedule";
-CREATE TABLE "Schedule" (
-	"time" integer,
-	"#t" integer NOT NULL,
-	"op" character NOT NULL,
-	"attr" character NOT NULL,
-	UNIQUE ("time")
-);
+-- Resultado: 0
+TRUNCATE TABLE "Schedule";
 
 INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
 (1, 1,  'R',  'A'),
