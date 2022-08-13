@@ -50,7 +50,12 @@ RETURNS integer AS $$
 			ELSE
 				-- Descobrindo o time em que a transação ocorreu
 				SELECT s."time" INTO time_commit FROM "Schedule" AS s WHERE s."op" = 'C' AND s."#t" = tr_1;
-
+				
+				-- Verificando se não existe a operação de commit
+				IF time_commit IS NULL THEN
+					time_commit := 1000000000;
+				END IF;
+				
 				FOR schedule_record_fim IN SELECT * FROM "Schedule" AS s WHERE (
 							s."time" > time_id_1 AND
 							s."time" < time_commit 	AND 
@@ -87,6 +92,7 @@ RETURNS integer AS $$
 			WHERE g.t_inicio = sg.t_fim AND NOT cycle
 		)
 		SELECT count(*) FROM search_graph where cycle = TRUE' INTO loops;
+		DROP TABLE "node";
 		  IF loops > 0 THEN
 			RETURN 0;
 		ELSE
@@ -182,6 +188,43 @@ INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
 (8, 1,  'C',  '-'),
 (9, 2,  'C',  '-'),
 (10, 3,  'C',  '-');
+
+-- calling function
+SELECT testeEquivalenciaPorConflito() AS resp;
+
+-- example_06 (PostgreSQL 10)
+-- Resultado: 0
+TRUNCATE TABLE "Schedule";
+
+INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
+(1, 1,  'R',  'X'),
+(2, 1,  'W',  'X'),
+(3, 2,  'R',  'X'),
+(4, 3,  'R',  'Y'),
+(5, 2,  'W',  'X'),
+(6, 2,  'R',  'Y'),
+(7, 3,  'W',  'Y'),
+(8, 2,  'W',  'Y');
+
+-- calling function
+SELECT testeEquivalenciaPorConflito() AS resp;
+
+-- example_07 (PostgreSQL 10)
+-- Resultado: 1
+TRUNCATE TABLE "Schedule";
+
+INSERT INTO "Schedule" ("time", "#t", "op", "attr") VALUES
+(1, 1,  'R',  'A'),
+(2, 1,  'W',  'A'),
+(3, 2,  'R',  'A'),
+(4, 2,  'W',  'A'),
+(5, 1,  'C',  '-'),
+(6, 3,  'R',  'B'),
+(7, 3,  'W',  'B'),
+(8, 2,  'R',  'B'),
+(9, 2,  'W',  'B'),
+(10, 3,  'C',  '-'),
+(11, 2,  'C',  '-');
 
 -- calling function
 SELECT testeEquivalenciaPorConflito() AS resp;
